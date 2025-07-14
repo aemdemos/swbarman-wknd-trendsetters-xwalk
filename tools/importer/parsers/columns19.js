@@ -1,34 +1,23 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Get the main grid that defines the columns
-  const grid = element.querySelector('.grid-layout');
-  if (!grid) return;
-  const gridChildren = Array.from(grid.children);
-  // Prepare to identify content blocks
-  let leftContent = null;
-  let rightBlocks = [];
-  // The left content is typically the <div> with h2, h3, p. The others are contact list <ul> and image <img>.
-  for (const child of gridChildren) {
-    // Identify the left content
-    if (
-      child.matches('div') &&
-      (child.querySelector('h2') || child.querySelector('h3'))
-    ) {
-      leftContent = child;
-    } else {
-      rightBlocks.push(child);
-    }
+  // Find the columns container
+  const grid = element.querySelector('.w-layout-grid');
+  let columns = [];
+  if (grid) {
+    // .w-layout-grid > div/ul/img are direct children and represent columns (content left, list right, image)
+    // We'll capture them in order as columns
+    const gridChildren = Array.from(grid.children);
+    // For each child, push as is
+    columns = gridChildren.map((col) => col);
+  } else {
+    // fallback to entire element as single column
+    columns = [element];
   }
-  // The right column should include both contact list (ul) and image (img), stacked
-  const rightCol = document.createElement('div');
-  rightBlocks.forEach((block) => {
-    rightCol.appendChild(block);
-  });
-  // Compose table cells for columns block
+  // Build the block table
   const cells = [
     ['Columns (columns19)'],
-    [leftContent, rightCol]
+    columns
   ];
-  const table = WebImporter.DOMUtils.createTable(cells, document);
-  element.replaceWith(table);
+  const block = WebImporter.DOMUtils.createTable(cells, document);
+  element.replaceWith(block);
 }

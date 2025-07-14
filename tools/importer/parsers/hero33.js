@@ -1,37 +1,42 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Header row exactly as specified
+  // Header row
   const headerRow = ['Hero (hero33)'];
 
-  // Get main grid layout
-  const grid = element.querySelector('.grid-layout');
-  if (!grid) return;
-  const gridChildren = Array.from(grid.children);
+  // Find the grid layout (main content holder)
+  const grid = element.querySelector('.w-layout-grid');
+  let image = null;
+  let textBlock = null;
 
-  // The first child is the image; the second is the content
-  let imgEl = null;
-  let contentEl = null;
-  for (const child of gridChildren) {
-    if (child.tagName === 'IMG') {
-      imgEl = child;
-    } else {
-      contentEl = child;
-    }
+  if (grid) {
+    // Find all top-level children of grid
+    const children = Array.from(grid.children);
+    // Find first img for the image
+    image = children.find(el => el.tagName && el.tagName.toLowerCase() === 'img') || null;
+    // Find the first non-img (likely the text block)
+    textBlock = children.find(el => el !== image) || null;
   }
 
-  // Row 2: background image (if present)
-  const rowImg = [imgEl ? imgEl : ''];
+  // Edge cases: if grid missing, try fallback
+  if (!image) {
+    image = element.querySelector('img');
+  }
+  if (!textBlock) {
+    // Look for a <div> with headings as fallback
+    textBlock = element.querySelector('h1, h2, h3, h4, h5, h6')?.closest('div');
+  }
 
-  // Row 3: headline, subheading, call-to-action, and all accompanying content
-  const rowContent = [contentEl ? contentEl : ''];
+  // 2nd row: image only if present
+  const imageRow = [image ? image : ''];
+  // 3rd row: text block (headings, meta) if present
+  const textRow = [textBlock ? textBlock : ''];
 
-  // Compose block table
   const cells = [
     headerRow,
-    rowImg,
-    rowContent
+    imageRow,
+    textRow,
   ];
 
-  const block = WebImporter.DOMUtils.createTable(cells, document);
-  element.replaceWith(block);
+  const table = WebImporter.DOMUtils.createTable(cells, document);
+  element.replaceWith(table);
 }

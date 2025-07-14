@@ -1,17 +1,26 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Get all immediate direct children of the grid (these are the columns)
+  // Extract immediate child divs representing columns
   const columns = Array.from(element.querySelectorAll(':scope > div'));
 
-  // Compose the table rows: first header, then array of columns as the second row
-  const tableCells = [
-    ['Columns (columns39)'],
-    columns
-  ];
+  // The header row is a single cell array, per requirements
+  const headerRow = ['Columns (columns39)'];
 
-  // Create the block table
-  const block = WebImporter.DOMUtils.createTable(tableCells, document);
+  // The content row is a single array, but that array contains multiple elements (for multiple columns)
+  // So, for createTable, the second row is an array of the column content (each column in its own cell)
+  const contentRow = columns.map(col => {
+    // If the column contains only an image, just use the image
+    const img = col.querySelector('img');
+    if (img && col.children.length === 1 && col.firstElementChild === img) {
+      return img;
+    }
+    // Otherwise, use the whole column so we don't miss any content
+    return col;
+  });
 
-  // Replace element in DOM
-  element.replaceWith(block);
+  // Compose the table: header row (one cell), then content row (N cells for N columns)
+  const tableRows = [headerRow, contentRow];
+
+  const table = WebImporter.DOMUtils.createTable(tableRows, document);
+  element.replaceWith(table);
 }

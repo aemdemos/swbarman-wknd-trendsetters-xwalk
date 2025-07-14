@@ -1,33 +1,46 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Get the inner container
-  const container = element.querySelector('.container');
-  if (!container) return;
+  // Header row: must match the example exactly
+  const headerRow = ['Hero (hero29)'];
 
-  // Get the grid layout
-  const grid = container.querySelector('.grid-layout');
-  if (!grid) return;
-
-  const gridChildren = Array.from(grid.children);
-  const img = gridChildren.find((el) => el.tagName === 'IMG');
-  const contentDiv = gridChildren.find((el) => el.tagName === 'DIV');
-
-  // Compose content for the content cell
-  let contentElements = [];
-  if (contentDiv) {
-    // Only include element nodes (keep element order and semantics)
-    contentElements = Array.from(contentDiv.childNodes).filter(
-      (el) => el.nodeType === Node.ELEMENT_NODE
-    );
+  // Find the grid that contains the left (text) and right (image) columns
+  const grid = element.querySelector('.grid-layout, .w-layout-grid');
+  let contentDiv = null;
+  let img = null;
+  if (grid) {
+    // Find all direct children divs of the grid
+    const gridChildren = Array.from(grid.children);
+    // Find the first div (text) and the first img (image)
+    for (const child of gridChildren) {
+      if (!contentDiv && child.tagName === 'DIV') {
+        contentDiv = child;
+      }
+      if (!img && child.tagName === 'IMG') {
+        img = child;
+      }
+    }
+  }
+  // Fallback: look for img in the section if not found in grid
+  if (!img) {
+    img = element.querySelector('img');
+  }
+  // Fallback: look for contentDiv in the section if not found in grid
+  if (!contentDiv) {
+    contentDiv = element.querySelector('div');
   }
 
-  // Build table rows
-  const headerRow = ['Hero (hero29)'];
+  // 2nd row: Background image (optional)
   const imageRow = [img ? img : ''];
-  const contentRow = [contentElements.length ? contentElements : ''];
 
-  const cells = [headerRow, imageRow, contentRow];
+  // 3rd row: Content (title, subheading, CTA, etc)
+  const contentRow = [contentDiv ? contentDiv : ''];
 
-  const table = WebImporter.DOMUtils.createTable(cells, document);
-  element.replaceWith(table);
+  const cells = [
+    headerRow,
+    imageRow,
+    contentRow
+  ];
+
+  const block = WebImporter.DOMUtils.createTable(cells, document);
+  element.replaceWith(block);
 }

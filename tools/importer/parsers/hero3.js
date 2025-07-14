@@ -1,49 +1,51 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // The block header is always 'Hero (hero3)'
+  // Always use the exact block header
   const headerRow = ['Hero (hero3)'];
-  // No background image in the provided HTML, so empty row
-  const bgRow = [''];
 
-  // Get the grid-layout container (should always exist in this block)
-  const grid = element.querySelector('.grid-layout');
-  let contentCell = '';
+  // Background image row (none in the HTML example)
+  const backgroundImageRow = [''];
+
+  // Find content container
+  const container = element.querySelector('.container');
+  let contentEls = [];
+
+  // Try to find the grid layout
+  const grid = container && container.querySelector('.w-layout-grid');
   if (grid) {
-    // The first grid child contains the heading and subheading
-    const textDiv = grid.children[0];
-    // The second grid child contains the call-to-action buttons
-    const ctaDiv = grid.children[1];
-    // Gather contents
-    const items = [];
-    // Heading (h2)
-    const h2 = textDiv ? textDiv.querySelector('h2') : null;
-    if (h2) items.push(h2);
-    // Subheading (p)
-    const subheading = textDiv ? textDiv.querySelector('p') : null;
-    if (subheading) items.push(subheading);
-    // CTA links (put in a vertical group)
-    if (ctaDiv) {
-      // Grab all immediate <a> children
-      const ctas = Array.from(ctaDiv.querySelectorAll('a'));
-      if (ctas.length) {
-        // Keep them together in a div to keep visual grouping
-        const btnGroup = document.createElement('div');
-        btnGroup.append(...ctas);
-        items.push(btnGroup);
-      }
+    // The left column: heading and subheading
+    const leftCol = grid.children[0];
+    // The right column: buttons/links
+    const rightCol = grid.children[1];
+
+    // Collect heading and subheading if present
+    if (leftCol) {
+      const heading = leftCol.querySelector('h2, h1, h3, h4, h5, h6');
+      if (heading) contentEls.push(heading);
+      const subheading = leftCol.querySelector('p');
+      if (subheading) contentEls.push(subheading);
     }
-    // Only set the content cell if there's something to show
-    if (items.length > 0) {
-      contentCell = items;
+
+    // Collect CTAs as links if present
+    if (rightCol) {
+      const ctas = Array.from(rightCol.querySelectorAll('a'));
+      if (ctas.length) contentEls.push(...ctas);
     }
   }
-  // Compose the table array
-  const cells = [
+
+  // Ensure at least something is in the content cell (fallback for robustness)
+  if (contentEls.length === 0) {
+    // Place the entire element as fallback if extraction fails (robustness)
+    contentEls = [element];
+  }
+
+  // Create the block table
+  const table = WebImporter.DOMUtils.createTable([
     headerRow,
-    bgRow,
-    [contentCell]
-  ];
-  // Create table and replace the original element
-  const block = WebImporter.DOMUtils.createTable(cells, document);
-  element.replaceWith(block);
+    backgroundImageRow,
+    [contentEls]
+  ], document);
+
+  // Replace the original element with the block table
+  element.replaceWith(table);
 }

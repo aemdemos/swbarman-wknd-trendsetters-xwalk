@@ -1,37 +1,51 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Cards (cards5) header row
-  const headerRow = ['Cards (cards5)'];
-  // Get all immediate <a> card elements
-  const cards = Array.from(element.querySelectorAll(':scope > a.card-link'));
-  const rows = cards.map(card => {
-    // 1. First cell: Image (mandatory)
-    let imgEl = '';
-    const imgAspect = card.querySelector('.utility-aspect-3x2');
-    if (imgAspect) {
-      const img = imgAspect.querySelector('img');
-      if (img) {
-        imgEl = img;
-      } else {
-        imgEl = imgAspect;
+  // Header row: EXACT match to spec
+  const header = ['Cards (cards5)'];
+  const rows = [];
+  // Each card is a direct child anchor
+  const cards = element.querySelectorAll(':scope > a.card-link');
+  cards.forEach(card => {
+    // First cell: image (always present)
+    let imgCell = null;
+    const imgContainer = card.querySelector('.utility-aspect-3x2');
+    if (imgContainer) {
+      // Use the actual <img> element if present (reference it directly)
+      const img = imgContainer.querySelector('img');
+      imgCell = img ? img : imgContainer;
+    }
+    // Second cell: text content (may include tag, heading, description)
+    const paddingDiv = card.querySelector('.utility-padding-all-1rem');
+    const textCellContent = [];
+    if (paddingDiv) {
+      // Tag group (optional, may have multiple tags, use the whole container if exists)
+      const tagGroup = paddingDiv.querySelector('.tag-group');
+      if (tagGroup) {
+        textCellContent.push(tagGroup);
+      }
+      // Heading (may be h3 or have the .h4-heading class)
+      const heading = paddingDiv.querySelector('h3, .h4-heading');
+      if (heading) {
+        textCellContent.push(heading);
+      }
+      // Description (p)
+      const para = paddingDiv.querySelector('p');
+      if (para) {
+        textCellContent.push(para);
       }
     }
-    // 2. Second cell: Text block (tag, heading, description)
-    const textBlock = card.querySelector('.utility-padding-all-1rem');
-    const textContent = [];
-    if (textBlock) {
-      // Tag (optional)
-      const tagGroup = textBlock.querySelector('.tag-group');
-      if (tagGroup) textContent.push(tagGroup);
-      // Heading (optional)
-      const heading = textBlock.querySelector('h3, .h4-heading');
-      if (heading) textContent.push(heading);
-      // Paragraph (optional)
-      const para = textBlock.querySelector('p, .paragraph-sm');
-      if (para) textContent.push(para);
+    // If textCellContent is empty, fallback to null, else array or single element
+    let textCell = null;
+    if (textCellContent.length === 1) {
+      textCell = textCellContent[0];
+    } else if (textCellContent.length > 1) {
+      textCell = textCellContent;
     }
-    return [imgEl, textContent];
+    rows.push([imgCell, textCell]);
   });
-  const table = WebImporter.DOMUtils.createTable([headerRow, ...rows], document);
+  const table = WebImporter.DOMUtils.createTable([
+    header,
+    ...rows
+  ], document);
   element.replaceWith(table);
 }

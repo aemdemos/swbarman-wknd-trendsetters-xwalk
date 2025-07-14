@@ -1,38 +1,40 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Find the main grid containing the columns
-  let grid = element.querySelector('.w-layout-grid.grid-layout');
-  let contentRow = [];
+  // Find the main grid layout containing columns
+  const grid = element.querySelector('.grid-layout');
+  let colElements = [];
 
   if (grid) {
-    // Each direct child of the grid is a column (reference original element, not clone)
-    contentRow = Array.from(grid.children);
+    // For flexibility, treat each immediate child of the grid as a column
+    const gridChildren = Array.from(grid.children);
+    // Each column's content should include ALL of its content (text, image, etc.)
+    colElements = gridChildren.map(col => {
+      // Get all children (to include all text and structure)
+      // If the column has only text nodes, wrap in a div to preserve block structure
+      if (col.children.length === 0 && col.textContent.trim() !== '') {
+        const wrapper = document.createElement('div');
+        wrapper.textContent = col.textContent;
+        return wrapper;
+      }
+      return col;
+    });
   } else {
-    // Fallback: treat the whole element as a single column
-    contentRow = [element];
+    // fallback: treat all direct children of element as columns
+    colElements = Array.from(element.children);
   }
 
-  // Create table manually to add colspan to the header if needed
-  const table = document.createElement('table');
-
-  // Header row: one column, with colspan if more than 1 content column
-  const headerTr = document.createElement('tr');
-  const th = document.createElement('th');
-  th.textContent = 'Columns (columns8)';
-  if (contentRow.length > 1) {
-    th.setAttribute('colspan', String(contentRow.length));
+  // If nothing was found, fallback to the whole element
+  if (colElements.length === 0) {
+    colElements = [element];
   }
-  headerTr.appendChild(th);
-  table.appendChild(headerTr);
 
-  // Content row: one <td> per column
-  const contentTr = document.createElement('tr');
-  contentRow.forEach(col => {
-    const td = document.createElement('td');
-    td.appendChild(col);
-    contentTr.appendChild(td);
-  });
-  table.appendChild(contentTr);
+  // The header row, always a single cell EXACTLY as the spec
+  const headerRow = ['Columns (columns8)'];
+  const cells = [
+    headerRow,
+    colElements
+  ];
 
+  const table = WebImporter.DOMUtils.createTable(cells, document);
   element.replaceWith(table);
 }

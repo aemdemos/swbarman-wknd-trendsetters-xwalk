@@ -1,25 +1,35 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Block header row
-  const headerRow = ['Hero (hero13)'];
+  // Prepare header row
+  const cells = [['Hero (hero13)']];
 
-  // Get all direct grid children
-  const grid = element.querySelector(':scope > .w-layout-grid');
+  // Find all direct grid children
+  const grid = element.querySelector('.w-layout-grid');
+  const gridItems = grid ? grid.querySelectorAll(':scope > div') : [];
+
+  // Row 2: Background image (optional)
   let bgImg = null;
-  let mainContent = null;
-
-  if (grid) {
-    const gridItems = grid.querySelectorAll(':scope > div:nth-child(2)');
-    bgImg = gridItems[0].querySelector('img');
-    mainContent = gridItems[0].querySelector('div');
+  if (gridItems.length > 0) {
+    // Find first <img> in the first grid item (background image)
+    bgImg = gridItems[0].querySelector('img') || null;
   }
+  cells.push([bgImg]);
 
-  // Ensure we always give something for each row (null if missing)
-  const secondRow = [bgImg || ''];
-  const thirdRow = [mainContent || ''];
+  // Row 3: Content (headline, features, CTA, etc)
+  let contentCell = null;
+  if (gridItems.length > 1) {
+    // Look for '.card' (and card body) inside the second grid item
+    const card = gridItems[1].querySelector('.card');
+    if (card) {
+      contentCell = card;
+    } else {
+      // Fallback: reference the whole 2nd grid cell
+      contentCell = gridItems[1];
+    }
+  }
+  cells.push([contentCell]);
 
-  // Compose the block table
-  const cells = [headerRow, secondRow, thirdRow];
+  // Create the table and replace
   const table = WebImporter.DOMUtils.createTable(cells, document);
   element.replaceWith(table);
 }

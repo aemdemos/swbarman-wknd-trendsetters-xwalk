@@ -1,27 +1,19 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
   // Find the grid that contains the footer columns
-  const grid = element.querySelector('.w-layout-grid.grid-layout');
+  const grid = element.querySelector('.w-layout-grid');
   if (!grid) return;
-  
-  // Get all direct children of the grid; each is a column
+  // Get all direct child elements of the grid as columns
   const columns = Array.from(grid.children);
-
-  // If there are no columns, don't process
-  if (columns.length === 0) return;
-
-  // Prepare the header as specified in the guidelines
+  // Compose the header row with only ONE cell
   const headerRow = ['Columns (columns11)'];
-
-  // The next row contains each column's DOM node, preserving all its structure and semantics
+  // Compose the content row with each column in its own cell
   const contentRow = columns;
-
-  // Build the block table
+  // Create the table structure
   const table = WebImporter.DOMUtils.createTable([
     headerRow,
     contentRow
   ], document);
-
-  // Replace the original footer element with the new table
+  // Replace the original element with the new table
   element.replaceWith(table);
 }

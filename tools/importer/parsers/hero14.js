@@ -1,37 +1,46 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Table Header: must match exactly
+  // Create the header row with the exact block name
   const headerRow = ['Hero (hero14)'];
 
-  // Get top-level grid (layout container)
-  const grid = element.querySelector('.w-layout-grid');
+  // Get the grid columns (top-level grid -> two children)
+  // :scope > div.w-layout-grid > div
+  let grid;
+  if (element.matches('.w-layout-grid')) {
+    grid = element;
+  } else {
+    grid = element.querySelector(':scope > .w-layout-grid');
+  }
+  // Fallback if not found
+  if (!grid) {
+    grid = element;
+  }
+  const gridChildren = grid.querySelectorAll(':scope > div');
 
-  // Defensive: grid may be missing (should not happen but handle)
-  let bgImgEl = '';
-  let contentEl = '';
-
-  if (grid) {
-    // Look for background image in first child (typically)
-    const gridChildren = Array.from(grid.children);
-    // The background image is an <img> inside a relatively positioned div (first child)
-    for (const child of gridChildren) {
-      if (!bgImgEl) {
-        const img = child.querySelector('img');
-        if (img) bgImgEl = img;
-      }
-      // Look for headline content (h1)
-      if (!contentEl && child.querySelector('h1')) {
-        contentEl = child;
-      }
-    }
+  // Row 2: background image (optional)
+  let bgImg = null;
+  if (gridChildren.length > 0) {
+    // Find img (first one in subtree)
+    const img = gridChildren[0].querySelector('img');
+    if (img) bgImg = img;
   }
 
-  // Row 2: background image (may be empty string if not found)
-  const rowImage = [bgImgEl ? bgImgEl : ''];
-  // Row 3: content (headline, subheadline, CTA, etc) - may be empty string if not found
-  const rowContent = [contentEl ? contentEl : ''];
+  // Row 3: title/subhead/cta group (optional)
+  let contentCell = null;
+  if (gridChildren.length > 1) {
+    // Content typically inside a container div
+    // Find the div that contains the headline and button group
+    // We'll include all content in that child div
+    contentCell = gridChildren[1];
+  }
 
-  const cells = [headerRow, rowImage, rowContent];
-  const table = WebImporter.DOMUtils.createTable(cells, document);
+  // Compose the rows (1 col, 3 rows)
+  const rows = [
+    headerRow,
+    [bgImg ? bgImg : ''],
+    [contentCell ? contentCell : '']
+  ];
+
+  const table = WebImporter.DOMUtils.createTable(rows, document);
   element.replaceWith(table);
 }

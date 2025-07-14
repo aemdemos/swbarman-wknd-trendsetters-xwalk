@@ -1,49 +1,50 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Table header - matches example exactly
+  // Build header row as specified
   const headerRow = ['Cards (cards34)'];
-
-  // Card extraction: each card is a direct <a> child
+  const rows = [headerRow];
+  // Get all direct card links
   const cards = Array.from(element.querySelectorAll(':scope > a'));
-
-  const rows = cards.map(card => {
-    // Image: first <img> in card
+  cards.forEach(card => {
+    // Card image (first img under this card)
     const img = card.querySelector('img');
-
-    // Find the div containing the card text info (tags, heading, p, 'Read')
-    // This is usually the second div inside the grid, after the img
-    let contentDiv = null;
-    const gridDivs = card.querySelectorAll('div.w-layout-grid');
-    if (gridDivs.length > 0) {
-      // In given HTML, the grid contains the image and a div with the rest
-      const children = Array.from(gridDivs[0].children);
-      // Find the div that is NOT the image (the content block)
-      contentDiv = children.find(child => child !== img && child.tagName === 'DIV');
-      // Fallback: If only one div, use it
-      if (!contentDiv) contentDiv = children.find(child => child.tagName === 'DIV');
+    // Card text content
+    const gridInner = card.querySelector(':scope > div');
+    let textCell = [];
+    if (gridInner) {
+      // Find the div holding all the content except the image
+      // Usually the second child (the first is img)
+      const contentDivs = Array.from(gridInner.children).filter(el => el !== img);
+      if (contentDivs.length > 0) {
+        // It's usually one div with all the details
+        const mainContentDiv = contentDivs[0];
+        // Tag row (optional)
+        const tagRow = mainContentDiv.querySelector('.flex-horizontal');
+        if (tagRow) textCell.push(tagRow);
+        // Heading (h3)
+        const heading = mainContentDiv.querySelector('h3');
+        if (heading) textCell.push(heading);
+        // Description (p)
+        const desc = mainContentDiv.querySelector('p');
+        if (desc) textCell.push(desc);
+        // CTA (the last div, usually 'Read')
+        const divs = mainContentDiv.querySelectorAll('div');
+        if (divs.length > 1) {
+          // We already used tagRow; the last div is likely the CTA
+          textCell.push(divs[divs.length - 1]);
+        } else if (divs.length === 1 && !tagRow) {
+          // If only one div and it's not tagRow, treat it as possible CTA
+          textCell.push(divs[0]);
+        }
+      }
     }
-    // Defensive: If not found, fallback to first div after img
-    if (!contentDiv && img) {
-      let sib = img.nextElementSibling;
-      while (sib && sib.tagName !== 'DIV') sib = sib.nextElementSibling;
-      contentDiv = sib;
-    }
-    // Defensive: If still not found, fallback to last div in card
-    if (!contentDiv) {
-      const allDivs = card.querySelectorAll('div');
-      contentDiv = allDivs[allDivs.length - 1] || card;
-    }
-
-    // The table always has 2 columns: [img, content]
-    return [img, contentDiv];
+    // Fallback if textCell is empty: just use the whole content div (very rare)
+    if (textCell.length === 0 && gridInner) textCell = [gridInner];
+    rows.push([
+      img,
+      textCell
+    ]);
   });
-
-  // Compose the table
-  const table = WebImporter.DOMUtils.createTable([
-    headerRow,
-    ...rows
-  ], document);
-
-  // Replace the original element
+  const table = WebImporter.DOMUtils.createTable(rows, document);
   element.replaceWith(table);
 }

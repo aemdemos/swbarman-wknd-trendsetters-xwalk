@@ -1,47 +1,45 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Prepare rows for block table
-  const rows = [];
-  // Header row (matches exactly per instruction)
-  rows.push(['Hero (hero36)']);
+  // Table header row must exactly match the example
+  const headerRow = ['Hero (hero36)'];
 
-  // Second row: background image cell (optional, none present in HTML)
-  rows.push(['']);
+  // Background image row (optional) - none in provided HTML
+  const bgRow = [''];
 
-  // Third row: grab title, subheading, CTA
-  // Find the main grid containing the content
-  const grid = element.querySelector('.grid-layout');
-  let title, subheading, cta;
-  if (grid) {
-    // Children of the grid: usually left = heading/subheading, right = button
-    const gridChildren = grid.querySelectorAll(':scope > *');
-    // Text block
-    if (gridChildren.length > 0) {
-      const textBlock = gridChildren[0];
-      title = textBlock.querySelector('h1, h2, h3, h4, h5, h6');
-      subheading = textBlock.querySelector('p');
-    }
-    // CTA block
-    if (gridChildren.length > 1) {
-      const ctaBlock = gridChildren[1];
-      // Use the block directly if it is a link/button, otherwise search inside
-      if (/^a|button$/.test(ctaBlock.tagName.toLowerCase())) {
-        cta = ctaBlock;
-      } else {
-        cta = ctaBlock.querySelector('a,button');
-      }
-    }
+  // Extract content: Heading, Subheading, CTA (button)
+  // The relevant content is inside grid-layout or directly in the element
+  let grid = element.querySelector('.w-layout-grid');
+  if (!grid) grid = element;
+  const gridChildren = Array.from(grid.children);
+
+  // The left block with headings and subheading is the first grid child
+  const textCol = gridChildren[0];
+  const contentArr = [];
+  if (textCol) {
+    // Title
+    const title = textCol.querySelector('h1, h2, h3, h4, h5, h6');
+    if (title) contentArr.push(title);
+    // Subheading -- require it's not the same as title
+    const subheading = textCol.querySelector('p, .subheading');
+    if (subheading && (!title || subheading !== title)) contentArr.push(subheading);
+  }
+  // The right block with the CTA is likely the second grid child
+  const ctaCol = gridChildren[1];
+  if (ctaCol && ctaCol.tagName === 'A') {
+    contentArr.push(ctaCol);
+  } else if (ctaCol) {
+    // If it's not an <a>, look for an <a> inside
+    const cta = ctaCol.querySelector('a');
+    if (cta) contentArr.push(cta);
   }
 
-  // Compose contents for the third row cell
-  const cellContents = [];
-  if (title) cellContents.push(title);
-  if (subheading) cellContents.push(subheading);
-  if (cta) cellContents.push(cta);
+  // If no content found, ensure the row is not empty
+  if (contentArr.length === 0) contentArr.push(document.createTextNode(''));
 
-  rows.push([cellContents]);
+  const contentRow = [contentArr];
 
-  // Create and replace
+  const rows = [headerRow, bgRow, contentRow];
+
   const table = WebImporter.DOMUtils.createTable(rows, document);
   element.replaceWith(table);
 }

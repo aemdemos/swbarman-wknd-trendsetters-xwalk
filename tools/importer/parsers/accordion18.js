@@ -1,32 +1,36 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Accordion (accordion18) block: header row + one row per item, two columns (title, content)
+  // Compose header row as per instructions, matching block/component name
   const rows = [['Accordion (accordion18)']];
 
-  // Get each accordion item (direct child with class 'accordion')
-  const accordionItems = Array.from(element.querySelectorAll(':scope > .accordion'));
+  // Select all direct children that are accordion items
+  const accordionItems = element.querySelectorAll(':scope > .accordion.w-dropdown');
+
   accordionItems.forEach((item) => {
-    // Title cell: .w-dropdown-toggle > .paragraph-lg (otherwise the toggle itself)
-    let titleEl = null;
-    const toggle = item.querySelector('.w-dropdown-toggle');
+    // Title: Find the .w-dropdown-toggle direct child, then .paragraph-lg
+    let titleCell = '';
+    const toggle = item.querySelector(':scope > .w-dropdown-toggle');
     if (toggle) {
-      titleEl = toggle.querySelector('.paragraph-lg');
-      if (!titleEl) titleEl = toggle;
+      const titleEl = toggle.querySelector('.paragraph-lg') || toggle;
+      titleCell = titleEl;
     }
 
-    // Content cell: .accordion-content > * (grab the nav and its content)
-    let contentEl = null;
-    const nav = item.querySelector('.accordion-content');
+    // Content: Find nav.accordion-content direct child, then descend for main content
+    let contentCell = '';
+    const nav = item.querySelector(':scope > nav.accordion-content');
     if (nav) {
-      // Prefer the innermost .rich-text if present, otherwise all of nav
-      const rt = nav.querySelector('.rich-text');
-      contentEl = rt ? rt : nav;
+      // Grab the entire content region inside nav
+      // Specifically, the first .utility-padding-all-1rem, or the nav itself
+      const contentContainer = nav.querySelector('.utility-padding-all-1rem, .rich-text') || nav;
+      contentCell = contentContainer;
     }
 
-    rows.push([titleEl, contentEl]);
+    rows.push([
+      titleCell,
+      contentCell
+    ]);
   });
 
-  // Create the block table and replace the original element
   const table = WebImporter.DOMUtils.createTable(rows, document);
   element.replaceWith(table);
 }

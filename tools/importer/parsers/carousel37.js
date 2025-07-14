@@ -1,46 +1,68 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Block header for carousel37
+  // Header row must exactly match the block name
   const cells = [
-    ['Carousel (carousel37)'],
+    ['Carousel (carousel37)']
   ];
 
-  // Find the main grid with content and images
-  const grid = element.querySelector('.grid-layout');
-  if (!grid) return;
-  const gridChildren = grid.querySelectorAll(':scope > div');
-  if (gridChildren.length < 2) return;
-
-  // Left column: text content (heading, paragraph, buttons)
-  const textCol = gridChildren[0];
-  // Right column: images
-  const imagesCol = gridChildren[1];
-
-  // Extract text elements
-  const textEls = [];
-  const heading = textCol.querySelector('h1, h2, h3, h4, h5, h6');
-  if (heading) textEls.push(heading);
-  const desc = textCol.querySelector('p');
-  if (desc) textEls.push(desc);
-  const buttons = textCol.querySelector('.button-group');
-  if (buttons) textEls.push(buttons);
-
-  // Find all images inside the nested grid in imagesCol
-  const imagesGrid = imagesCol.querySelector('.grid-layout');
-  if (!imagesGrid) return;
-  const imgEls = imagesGrid.querySelectorAll('img');
-  if (!imgEls.length) return;
-
-  // For the carousel: first image gets text, others get blank cell
+  // Find the grid with the images (second .w-layout-grid)
+  const container = element.querySelector('.container');
+  let imageGrid = null;
+  let textArea = null;
+  if (container) {
+    const grids = container.querySelectorAll('.w-layout-grid');
+    // Defensive: look for a grid with at least 2 children and some images
+    for (const grid of grids) {
+      const imgs = grid.querySelectorAll('img');
+      if (imgs.length >= 2) {
+        imageGrid = grid;
+        break;
+      }
+    }
+    // First .w-layout-grid child is text
+    for (const grid of grids) {
+      // Looking for child with heading (h1), subheading (p), and buttons
+      const h1 = grid.querySelector('h1');
+      const sub = grid.querySelector('p');
+      const btns = grid.querySelector('.button-group');
+      if (h1 && btns) {
+        textArea = grid;
+        break;
+      }
+    }
+  }
+  // Fallbacks if something is missing
+  if (!imageGrid) {
+    imageGrid = element.querySelectorAll('.w-layout-grid')[1] || element;
+  }
+  if (!textArea) {
+    textArea = element.querySelector('h1')?.parentElement || element;
+  }
+  // Get all images for slides
+  const slides = [];
+  const imgEls = imageGrid.querySelectorAll('img');
   imgEls.forEach((img, i) => {
-    if (i === 0 && textEls.length) {
-      cells.push([img, textEls]);
+    if (i === 0) {
+      // First slide gets textArea content in second cell
+      // Only include heading, subheading, and button group in order, if present
+      const textContent = [];
+      const heading = textArea.querySelector('h1');
+      if (heading) textContent.push(heading);
+      const subheading = textArea.querySelector('p');
+      if (subheading) textContent.push(subheading);
+      const buttonGroup = textArea.querySelector('.button-group');
+      if (buttonGroup) textContent.push(buttonGroup);
+      // If none found, leave cell empty
+      slides.push([
+        img,
+        textContent.length === 0 ? '' : (textContent.length === 1 ? textContent[0] : textContent)
+      ]);
     } else {
-      cells.push([img, '']);
+      // Image only
+      slides.push([img]);
     }
   });
-
-  // Create and replace with the carousel table block
+  slides.forEach(row => cells.push(row));
   const table = WebImporter.DOMUtils.createTable(cells, document);
   element.replaceWith(table);
 }
