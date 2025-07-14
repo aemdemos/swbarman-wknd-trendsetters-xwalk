@@ -1,47 +1,39 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Prepare rows for block table
-  const rows = [];
-  // Header row (matches exactly per instruction)
-  rows.push(['Hero (hero36)']);
+  // 1. Header row exactly as specified
+  const headerRow = ['Hero (hero36)'];
 
-  // Second row: background image cell (optional, none present in HTML)
-  rows.push(['']);
+  // 2. Background image row (empty, as there is no bg img in this HTML)
+  const bgRow = [''];
 
-  // Third row: grab title, subheading, CTA
-  // Find the main grid containing the content
+  // 3. Content row: Title, Subheading, CTA
+  // The actual content is inside a .grid-layout grid with two children:
+  //   - First child: heading + subheading
+  //   - Second child: CTA link
   const grid = element.querySelector('.grid-layout');
-  let title, subheading, cta;
+  let contentParts = [];
   if (grid) {
-    // Children of the grid: usually left = heading/subheading, right = button
-    const gridChildren = grid.querySelectorAll(':scope > *');
-    // Text block
-    if (gridChildren.length > 0) {
-      const textBlock = gridChildren[0];
-      title = textBlock.querySelector('h1, h2, h3, h4, h5, h6');
-      subheading = textBlock.querySelector('p');
+    // First col: heading and subheading
+    const gridChildren = Array.from(grid.children);
+    if (gridChildren[0]) {
+      // preserve all children (e.g. h2, p)
+      contentParts.push(...Array.from(gridChildren[0].childNodes).filter(node => node.nodeType === Node.ELEMENT_NODE));
     }
-    // CTA block
-    if (gridChildren.length > 1) {
-      const ctaBlock = gridChildren[1];
-      // Use the block directly if it is a link/button, otherwise search inside
-      if (/^a|button$/.test(ctaBlock.tagName.toLowerCase())) {
-        cta = ctaBlock;
-      } else {
-        cta = ctaBlock.querySelector('a,button');
-      }
+    if (gridChildren[1]) {
+      // CTA button (a)
+      contentParts.push(gridChildren[1]);
     }
   }
+  // Fallback: if grid structure missing, just use direct children
+  if (contentParts.length === 0) {
+    contentParts = Array.from(element.childNodes).filter(node => node.nodeType === Node.ELEMENT_NODE);
+  }
+  const contentRow = [contentParts];
 
-  // Compose contents for the third row cell
-  const cellContents = [];
-  if (title) cellContents.push(title);
-  if (subheading) cellContents.push(subheading);
-  if (cta) cellContents.push(cta);
-
-  rows.push([cellContents]);
-
-  // Create and replace
-  const table = WebImporter.DOMUtils.createTable(rows, document);
+  const table = WebImporter.DOMUtils.createTable([
+    headerRow,
+    bgRow,
+    contentRow
+  ], document);
   element.replaceWith(table);
 }

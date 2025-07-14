@@ -1,70 +1,43 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  const headerRow = ['Cards (cards22)'];
-  const rows = [headerRow];
+  // Helper to extract cards from a grid section
+  function extractCards(grid) {
+    const cards = Array.from(grid.children).filter((el) => el.tagName === 'A');
+    return cards.map((card) => {
+      // Image (may not exist on every card)
+      let imgDiv = card.querySelector('.utility-aspect-3x2');
+      let img = imgDiv ? imgDiv.querySelector('img') : '';
+      // Heading and description (may be wrapped in utility-text-align-center for some cards)
+      let heading = card.querySelector('h3');
+      let desc = card.querySelector('.paragraph-sm');
 
-  // Find all tab panes in the block
-  const tabPanes = element.querySelectorAll('.w-tab-pane');
-  tabPanes.forEach((tabPane) => {
-    // Each grid within a tab
-    const grids = tabPane.querySelectorAll('.w-layout-grid');
-    grids.forEach((grid) => {
-      // Each card is an <a> direct child of the grid
-      const cards = grid.querySelectorAll(':scope > a');
-      cards.forEach((card) => {
-        // IMAGE CELL
-        let img = card.querySelector('img');
-        let imageCell = img || '';
+      // Compose the text cell as an array to preserve structure if both are present
+      let textParts = [];
+      if (heading) textParts.push(heading);
+      if (desc && desc !== heading) textParts.push(desc);
+      let textCell = textParts.length > 1 ? textParts : (textParts[0] || '');
 
-        // TEXT CELL
-        let textParts = [];
-        // Grab heading in order of appearance
-        let heading = card.querySelector('h1, h2, h3, h4, h5, h6');
-        if (heading) textParts.push(heading);
-
-        // Grab the first paragraph-sm or similar (skip heading already added)
-        let desc = null;
-        // Find all nodes after the heading
-        if (heading) {
-          let sibling = heading.nextElementSibling;
-          while (sibling) {
-            if (
-              sibling.matches('.paragraph-sm, .paragraph, p, span') &&
-              sibling.textContent.trim() !== ''
-            ) {
-              desc = sibling;
-              break;
-            }
-            sibling = sibling.nextElementSibling;
-          }
-        } else {
-          // If no heading, just get first .paragraph-sm, .paragraph, p or span
-          desc = card.querySelector('.paragraph-sm, .paragraph, p, span');
-        }
-        if (desc) textParts.push(desc);
-
-        // CTA: look for links inside the card that are not the card itself
-        const deepLinks = Array.from(card.querySelectorAll('a')).filter(a => a !== card);
-        if (deepLinks.length > 0) textParts.push(deepLinks[0]);
-
-        // Fallback: if no heading or desc, use text nodes
-        if (textParts.length === 0) {
-          for (let child of card.children) {
-            if (
-              child.nodeType === 1 &&
-              (child.tagName.startsWith('H') || child.tagName === 'DIV' || child.tagName === 'P' || child.tagName === 'SPAN') &&
-              child.textContent.trim() !== ''
-            ) {
-              textParts.push(child);
-              break;
-            }
-          }
-        }
-        rows.push([imageCell, textParts]);
-      });
+      return [img || '', textCell];
     });
+  }
+
+  // Find all tab panes (each contains a grid of cards)
+  const tabPanes = element.querySelectorAll(':scope > div');
+  let allCards = [];
+  tabPanes.forEach((tabPane) => {
+    const grid = tabPane.querySelector('.w-layout-grid');
+    if (grid) {
+      const cards = extractCards(grid);
+      allCards = allCards.concat(cards);
+    }
   });
 
+  // If there are no cards, do nothing
+  if (!allCards.length) return;
+
+  // Build the table
+  const rows = [['Cards (cards22)']];
+  allCards.forEach((row) => rows.push(row));
   const table = WebImporter.DOMUtils.createTable(rows, document);
   element.replaceWith(table);
 }

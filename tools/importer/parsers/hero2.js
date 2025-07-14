@@ -1,37 +1,49 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Step 1: Find the main grid containing the image and text
+  // Find the layout grid containing the image and content
   const grid = element.querySelector('.grid-layout');
+  if (!grid) return;
+  const gridChildren = grid.querySelectorAll(':scope > *');
+
   let imageEl = null;
-  let textBlock = null;
+  let contentEl = null;
 
-  if (grid) {
-    const children = Array.from(grid.children);
-    // The structure is: [IMG, TEXTBLOCK] or [TEXTBLOCK, IMG], but in the given HTML it's IMG then TEXTBLOCK
-    imageEl = children.find((el) => el.tagName === 'IMG');
-    textBlock = children.find((el) => el !== imageEl);
+  // Identify which child is the image, which is the content
+  for (const child of gridChildren) {
+    if (child.tagName === 'IMG') {
+      imageEl = child;
+    } else {
+      contentEl = child;
+    }
   }
 
-  // Prepare the content cell: headline, subheading, CTA(s), keeping existing references
-  const textContent = [];
-  if (textBlock) {
-    // Headline (keep original heading level)
-    const heading = textBlock.querySelector('h1, h2, h3, h4, h5, h6');
-    if (heading) textContent.push(heading);
-    // Subheading (first paragraph, if any)
-    const subheading = textBlock.querySelector('p');
-    if (subheading) textContent.push(subheading);
-    // CTAs (button group, if any)
-    const buttonGroup = textBlock.querySelector('.button-group');
-    if (buttonGroup) textContent.push(buttonGroup);
-  }
+  // Build the image row cell
+  const imageRowCell = imageEl ? [imageEl] : [''];
 
-  // Build the block table as per requirements: header, image, text (all single column)
-  const rows = [
+  // Build the content row cell
+  const contentFragments = [];
+  if (contentEl) {
+    // Retain all content in order: heading, subheading, CTAs
+    // Heading
+    const heading = contentEl.querySelector('h1, h2, h3, h4, h5, h6');
+    if (heading) contentFragments.push(heading);
+    // Subheading or paragraph
+    const subheading = contentEl.querySelector('p');
+    if (subheading) contentFragments.push(subheading);
+    // Button group (CTAs)
+    const buttonGroup = contentEl.querySelector('.button-group');
+    if (buttonGroup) contentFragments.push(buttonGroup);
+  }
+  const contentRowCell = contentFragments.length ? [contentFragments] : [''];
+
+  // Compose table rows
+  const cells = [
     ['Hero (hero2)'],
-    [imageEl ? imageEl : ''],
-    [textContent.length ? textContent : '']
+    imageRowCell,
+    contentRowCell
   ];
-  const block = WebImporter.DOMUtils.createTable(rows, document);
-  element.replaceWith(block);
+
+  // Create and replace with the structured table
+  const table = WebImporter.DOMUtils.createTable(cells, document);
+  element.replaceWith(table);
 }

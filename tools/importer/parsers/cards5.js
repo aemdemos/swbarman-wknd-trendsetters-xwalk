@@ -1,37 +1,40 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Cards (cards5) header row
+  // Header row, per block name
   const headerRow = ['Cards (cards5)'];
-  // Get all immediate <a> card elements
-  const cards = Array.from(element.querySelectorAll(':scope > a.card-link'));
-  const rows = cards.map(card => {
-    // 1. First cell: Image (mandatory)
-    let imgEl = '';
-    const imgAspect = card.querySelector('.utility-aspect-3x2');
-    if (imgAspect) {
-      const img = imgAspect.querySelector('img');
-      if (img) {
-        imgEl = img;
-      } else {
-        imgEl = imgAspect;
-      }
+  const rows = [];
+  // Each card is a direct <a> child of the grid
+  const cards = element.querySelectorAll(':scope > a');
+  cards.forEach((card) => {
+    // First cell: image or icon
+    let imageCell = '';
+    // Try finding the image container (always has a utility-aspect-3x2 class)
+    const imageContainer = card.querySelector('.utility-aspect-3x2');
+    if (imageContainer) {
+      imageCell = imageContainer;
+    } else {
+      // fallback: just in case the structure is off (rare)
+      const img = card.querySelector('img');
+      if (img) imageCell = img;
     }
-    // 2. Second cell: Text block (tag, heading, description)
-    const textBlock = card.querySelector('.utility-padding-all-1rem');
-    const textContent = [];
-    if (textBlock) {
-      // Tag (optional)
-      const tagGroup = textBlock.querySelector('.tag-group');
-      if (tagGroup) textContent.push(tagGroup);
-      // Heading (optional)
-      const heading = textBlock.querySelector('h3, .h4-heading');
-      if (heading) textContent.push(heading);
-      // Paragraph (optional)
-      const para = textBlock.querySelector('p, .paragraph-sm');
-      if (para) textContent.push(para);
+    // Second cell: text content (title, tag, description, etc)
+    let textCell = '';
+    const textContainer = card.querySelector('.utility-padding-all-1rem');
+    if (textContainer) {
+      textCell = textContainer;
+    } else {
+      // fallback: try all non-image children
+      const nonImageChildren = Array.from(card.children).filter(child => child !== imageContainer);
+      if (nonImageChildren.length === 1) {
+        textCell = nonImageChildren[0];
+      } else if (nonImageChildren.length > 1) {
+        textCell = nonImageChildren;
+      } // else remain ''
     }
-    return [imgEl, textContent];
+    rows.push([imageCell, textCell]);
   });
-  const table = WebImporter.DOMUtils.createTable([headerRow, ...rows], document);
+  // Compose the table
+  const cells = [headerRow, ...rows];
+  const table = WebImporter.DOMUtils.createTable(cells, document);
   element.replaceWith(table);
 }

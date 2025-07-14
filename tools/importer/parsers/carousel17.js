@@ -1,29 +1,30 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // 1. Table header must exactly match the block name and variant
+  // Header row: must match exactly the specification
   const headerRow = ['Carousel (carousel17)'];
 
-  // 2. Find the main grid, which houses each slide
+  // Find grid container that holds all the image slides
   const grid = element.querySelector('.grid-layout');
-  if (!grid) return; // Defensive: if not found, do nothing
+  if (!grid) return;
 
-  // 3. Each slide is a direct child of the grid
+  // Each direct child of grid is a slide wrapper
   const slides = Array.from(grid.children);
-  // Defensive: If no slides, stop
-  if (!slides.length) return;
 
-  // 4. Process each slide
-  const rows = slides.map(slide => {
-    // Find the first img descendant for the image cell
+  const rows = slides.map((slide) => {
+    // Each slide should have an image inside
     const img = slide.querySelector('img');
-    // Only reference the existing element: if not found, cell is empty
-    return [img || '', '']; // No text content in provided HTML
-  });
+    // If no image found, skip this row
+    if (!img) return null;
+    // Reference the actual image element only (no text for these slides)
+    return [img, ''];
+  }).filter(Boolean); // Remove any null rows
 
-  // 5. Assemble table data
+  // Compose the table as per spec
   const cells = [headerRow, ...rows];
 
-  // 6. Create block table and replace the original element
-  const block = WebImporter.DOMUtils.createTable(cells, document);
-  element.replaceWith(block);
+  // Create the table block
+  const table = WebImporter.DOMUtils.createTable(cells, document);
+
+  // Replace the original element with the new table
+  element.replaceWith(table);
 }

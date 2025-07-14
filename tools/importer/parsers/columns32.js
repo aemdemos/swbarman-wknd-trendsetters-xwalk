@@ -1,24 +1,30 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Find the grid layout container
-  const grid = element.querySelector('.grid-layout');
-  if (!grid) return;
+  // Get the grid element which contains columns (direct child of container)
+  const grid = element.querySelector(':scope > .grid-layout');
+  if (!grid) {
+    // Fallback: if grid not found, do not process further
+    return;
+  }
+  // Get all immediate children of grid - these are the columns
+  const columnElements = Array.from(grid.children).filter(el => el.nodeType === 1);
 
-  // Get all immediate children (columns) of the grid
-  const columns = Array.from(grid.children);
-  if (columns.length === 0) return;
+  // If no columns, do not process
+  if (columnElements.length === 0) {
+    return;
+  }
 
-  // The header row must be a single cell array
+  // Table header as specified
   const headerRow = ['Columns (columns32)'];
-  // The second row: as many columns as found
-  const contentRow = columns;
+  // Compose one row with each column cell being the full original column element
+  const contentRow = columnElements;
 
-  // Build the table
-  const table = WebImporter.DOMUtils.createTable([
+  const cells = [
     headerRow,
     contentRow
-  ], document);
-
-  // Replace the original element
+  ];
+  // Create the table block
+  const table = WebImporter.DOMUtils.createTable(cells, document);
+  // Replace the original element with the table
   element.replaceWith(table);
 }

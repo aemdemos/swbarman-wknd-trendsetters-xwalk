@@ -1,46 +1,52 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Block header for carousel37
-  const cells = [
-    ['Carousel (carousel37)'],
-  ];
+  // Table header
+  const headerRow = ['Carousel (carousel37)'];
 
-  // Find the main grid with content and images
-  const grid = element.querySelector('.grid-layout');
-  if (!grid) return;
-  const gridChildren = grid.querySelectorAll(':scope > div');
-  if (gridChildren.length < 2) return;
+  // Locate the image grid: grid-layout with multiple img elements
+  const grids = element.querySelectorAll('.grid-layout');
+  let imagesGrid = null;
+  for (const grid of grids) {
+    if (grid.querySelectorAll('img').length > 1) {
+      imagesGrid = grid;
+      break;
+    }
+  }
+  const imgs = imagesGrid ? Array.from(imagesGrid.querySelectorAll('img')) : [];
 
-  // Left column: text content (heading, paragraph, buttons)
-  const textCol = gridChildren[0];
-  // Right column: images
-  const imagesCol = gridChildren[1];
+  // Gather text content for the first slide
+  let firstSlideTitle = null, firstSlideDesc = null, firstSlideButtons = null;
+  // The left column div (contains heading, subheading, buttons)
+  const contentCols = element.querySelectorAll('.w-layout-grid > div');
+  let textCol = null;
+  for (const col of contentCols) {
+    if (col.querySelector('h1, .h1-heading')) {
+      textCol = col;
+      break;
+    }
+  }
+  if (textCol) {
+    firstSlideTitle = textCol.querySelector('h1, .h1-heading');
+    firstSlideDesc = textCol.querySelector('p, .subheading');
+    firstSlideButtons = textCol.querySelector('.button-group');
+  }
 
-  // Extract text elements
-  const textEls = [];
-  const heading = textCol.querySelector('h1, h2, h3, h4, h5, h6');
-  if (heading) textEls.push(heading);
-  const desc = textCol.querySelector('p');
-  if (desc) textEls.push(desc);
-  const buttons = textCol.querySelector('.button-group');
-  if (buttons) textEls.push(buttons);
+  // Compose content for first slide's text column
+  const textCell = [];
+  if (firstSlideTitle) textCell.push(firstSlideTitle);
+  if (firstSlideDesc) textCell.push(firstSlideDesc);
+  if (firstSlideButtons) textCell.push(firstSlideButtons);
 
-  // Find all images inside the nested grid in imagesCol
-  const imagesGrid = imagesCol.querySelector('.grid-layout');
-  if (!imagesGrid) return;
-  const imgEls = imagesGrid.querySelectorAll('img');
-  if (!imgEls.length) return;
-
-  // For the carousel: first image gets text, others get blank cell
-  imgEls.forEach((img, i) => {
-    if (i === 0 && textEls.length) {
-      cells.push([img, textEls]);
+  // Build table rows
+  const rows = [headerRow];
+  imgs.forEach((img, idx) => {
+    if (idx === 0) {
+      rows.push([img, textCell]);
     } else {
-      cells.push([img, '']);
+      rows.push([img, '']);
     }
   });
 
-  // Create and replace with the carousel table block
-  const table = WebImporter.DOMUtils.createTable(cells, document);
+  const table = WebImporter.DOMUtils.createTable(rows, document);
   element.replaceWith(table);
 }

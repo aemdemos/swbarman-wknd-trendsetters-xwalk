@@ -1,40 +1,56 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Header row
-  const headerRow = ['Hero (hero10)'];
-
-  // 1st content row: collage of images (background)
-  // Find the collage container
+  // --- Extract images for background ---
   let images = [];
-  const scaleDiv = element.querySelector('.ix-hero-scale-3x-to-1x');
-  if (scaleDiv) {
-    // Only immediate direct children: .grid-layout.desktop-3-column
-    const grid = scaleDiv.querySelector('.grid-layout.desktop-3-column');
-    if (grid) {
-      images = Array.from(grid.querySelectorAll('img'));
+  // Find the grid that contains hero images
+  const grid = element.querySelector('.grid-layout.desktop-3-column');
+  if (grid) {
+    const imgs = grid.querySelectorAll('img');
+    images = Array.from(imgs);
+  }
+  // If no images, create empty fragment
+  let imagesContent;
+  if (images.length) {
+    const frag = document.createDocumentFragment();
+    images.forEach(img => frag.appendChild(img));
+    imagesContent = frag;
+  } else {
+    imagesContent = document.createTextNode('');
+  }
+
+  // --- Extract headline, subheading, buttons ---
+  // Find the hero content container
+  let contentCell = [];
+  const contentDiv = element.querySelector('.ix-hero-scale-3x-to-1x-content');
+  if (contentDiv) {
+    const container = contentDiv.querySelector('.container');
+    if (container) {
+      // Heading
+      const heading = container.querySelector('h1');
+      if (heading) contentCell.push(heading);
+      // Subheading
+      const subheading = container.querySelector('p');
+      if (subheading) contentCell.push(subheading);
+      // Button(s)
+      const buttonGroup = container.querySelector('.button-group');
+      if (buttonGroup) {
+        // reference each <a> directly
+        const links = Array.from(buttonGroup.querySelectorAll('a'));
+        contentCell = contentCell.concat(links);
+      }
     }
   }
-  const imageRow = [images];
 
-  // 2nd content row: text and CTAs
-  let contentElements = [];
-  const contentDiv = element.querySelector('.ix-hero-scale-3x-to-1x-content .container');
-  if (contentDiv) {
-    // Use order: h1, p, then all a (CTA buttons)
-    const heading = contentDiv.querySelector('h1');
-    const subheading = contentDiv.querySelector('p');
-    const ctas = Array.from(contentDiv.querySelectorAll('a'));
+  // If nothing found for content, provide empty content
+  if (!contentCell.length) contentCell = [''];
 
-    if (heading) contentElements.push(heading);
-    if (subheading) contentElements.push(subheading);
-    if (ctas.length) contentElements.push(...ctas);
-  }
-  const contentRow = [contentElements];
+  // --- Compose block table as per block definition ---
+  const rows = [
+    ['Hero (hero10)'],
+    [imagesContent],
+    [contentCell]
+  ];
 
-  // Assemble table
-  const cells = [headerRow, imageRow, contentRow];
-  const block = WebImporter.DOMUtils.createTable(cells, document);
-
-  // Replace element
-  element.replaceWith(block);
+  const table = WebImporter.DOMUtils.createTable(rows, document);
+  element.replaceWith(table);
 }

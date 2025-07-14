@@ -1,25 +1,35 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // The Cards (cards35) block expects two columns: image/icon and text content per card.
-  // In this HTML, each card only has an image, and there is no text content.
-  // We will generate a two-column table: first column is the image, second is an empty cell (intentionally blank due to lack of text in source)
-
-  const headerRow = ['Cards (cards35)']; // Header row must be a single column per block requirement
-
-  // Each card: <div class="utility-aspect-1x1"><img ...></div>
-  const cardDivs = Array.from(element.querySelectorAll(':scope > div.utility-aspect-1x1'));
-
-  // For each card, produce [image_element, empty string (text cell intentionally blank)]
-  const cardRows = cardDivs.map(cardDiv => {
-    const img = cardDiv.querySelector('img');
-    return [img, '']; // Intentionally blank text cell as per block requirements when no text exists
+  // The header row must be a single-cell row with the block name
+  const cells = [['Cards (cards35)']];
+  // For each card: a direct child div in the grid
+  const cardDivs = element.querySelectorAll(':scope > div');
+  cardDivs.forEach(cardDiv => {
+    // Try to extract the image in the card
+    const img = cardDiv.querySelector('img, picture, svg');
+    // Try to extract any text content (heading, description, links) from the card
+    // In this HTML there are only images; in a richer card, text may exist alongside the image.
+    // We'll collect all non-image/non-media nodes for the text cell.
+    const textNodes = Array.from(cardDiv.childNodes).filter(node => {
+      // exclude images/media
+      if(node.nodeType === Node.ELEMENT_NODE) {
+        const tag = node.tagName.toLowerCase();
+        if(tag === 'img' || tag === 'picture' || tag === 'svg' || tag === 'video' || tag === 'iframe') return false;
+        // skip the image wrapper div
+        if(node.querySelector('img, picture, svg, video, iframe')) return false;
+      }
+      // exclude empty text nodes
+      if(node.nodeType === Node.TEXT_NODE && !node.textContent.trim()) return false;
+      return true;
+    });
+    let textCell = '';
+    if (textNodes.length === 1) {
+      textCell = textNodes[0];
+    } else if (textNodes.length > 1) {
+      textCell = textNodes;
+    }
+    cells.push([img, textCell]);
   });
-
-  // The table data: header row (single column), then card rows (2 columns)
-  // WebImporter.DOMUtils.createTable handles differing row lengths by aligning the first row as single header cell
-  const tableData = [headerRow, ...cardRows];
-
-  // Create and replace
-  const block = WebImporter.DOMUtils.createTable(tableData, document);
-  element.replaceWith(block);
+  const table = WebImporter.DOMUtils.createTable(cells, document);
+  element.replaceWith(table);
 }

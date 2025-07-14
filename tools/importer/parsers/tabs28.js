@@ -1,23 +1,21 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Extract all tab <a> elements (direct children)
+  // Get all immediate <a> children (each tab selector)
   const tabLinks = Array.from(element.querySelectorAll(':scope > a'));
-
-  // Prepare header row: single cell as required by the example
-  const headerRow = ['Tabs'];
-
-  // Prepare labels row: one column per tab label as required by the example
-  const labelRow = tabLinks.map(a => {
+  // Build rows: each row is [Tab Label, Tab Content (empty)]
+  const tabRows = tabLinks.map(a => {
+    let label = '';
     const labelDiv = a.querySelector('div');
-    return labelDiv ? labelDiv : a;
+    if (labelDiv) {
+      label = labelDiv.textContent.trim();
+    } else {
+      label = a.textContent.trim();
+    }
+    return [label, ''];
   });
-
-  // Compose table data, keeping headerRow as a single-cell row
-  const cells = [headerRow, labelRow];
-
-  // Create the block table
-  const table = WebImporter.DOMUtils.createTable(cells, document);
-
-  // Replace the original element with the new table
+  // Header row: exactly one cell, per guidelines and example
+  const tableCells = [ ['Tabs'], ...tabRows ];
+  // Create and replace
+  const table = WebImporter.DOMUtils.createTable(tableCells, document);
   element.replaceWith(table);
 }

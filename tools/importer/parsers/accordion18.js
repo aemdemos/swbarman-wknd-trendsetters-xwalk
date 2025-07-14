@@ -1,32 +1,52 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Accordion (accordion18) block: header row + one row per item, two columns (title, content)
-  const rows = [['Accordion (accordion18)']];
+  // Header row for the block
+  const cells = [
+    ['Accordion (accordion18)']
+  ];
 
-  // Get each accordion item (direct child with class 'accordion')
-  const accordionItems = Array.from(element.querySelectorAll(':scope > .accordion'));
-  accordionItems.forEach((item) => {
-    // Title cell: .w-dropdown-toggle > .paragraph-lg (otherwise the toggle itself)
-    let titleEl = null;
-    const toggle = item.querySelector('.w-dropdown-toggle');
+  // Get all accordion items (each .w-dropdown)
+  const accordions = element.querySelectorAll(':scope > .accordion.w-dropdown');
+  accordions.forEach(acc => {
+    // Find title cell: look for .paragraph-lg inside the toggle
+    const toggle = acc.querySelector('.w-dropdown-toggle');
+    let titleCell = null;
     if (toggle) {
-      titleEl = toggle.querySelector('.paragraph-lg');
-      if (!titleEl) titleEl = toggle;
+      const para = toggle.querySelector('.paragraph-lg');
+      titleCell = para ? para : toggle;
+    } else {
+      // fallback: maybe just the first child
+      titleCell = acc.firstElementChild;
     }
 
-    // Content cell: .accordion-content > * (grab the nav and its content)
-    let contentEl = null;
-    const nav = item.querySelector('.accordion-content');
+    // Find content cell: inside nav.accordion-content .w-richtext or the nav itself
+    const nav = acc.querySelector('nav.accordion-content');
+    let contentCell = null;
     if (nav) {
-      // Prefer the innermost .rich-text if present, otherwise all of nav
-      const rt = nav.querySelector('.rich-text');
-      contentEl = rt ? rt : nav;
+      // Try to get the rich text content, but fall back to nav's children
+      const rich = nav.querySelector('.w-richtext');
+      if (rich) {
+        contentCell = rich;
+      } else {
+        // fallback: include all content of nav
+        // Remove outer wrappers if present (e.g., .utility-padding-all-1rem)
+        let child = nav.firstElementChild;
+        if (child && child.children.length === 1) {
+          contentCell = child.firstElementChild;
+        } else if (child) {
+          contentCell = child;
+        } else {
+          contentCell = nav;
+        }
+      }
     }
 
-    rows.push([titleEl, contentEl]);
+    cells.push([
+      titleCell,
+      contentCell
+    ]);
   });
 
-  // Create the block table and replace the original element
-  const table = WebImporter.DOMUtils.createTable(rows, document);
+  const table = WebImporter.DOMUtils.createTable(cells, document);
   element.replaceWith(table);
 }

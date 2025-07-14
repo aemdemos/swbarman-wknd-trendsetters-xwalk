@@ -1,34 +1,36 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Get the main grid that defines the columns
-  const grid = element.querySelector('.grid-layout');
-  if (!grid) return;
-  const gridChildren = Array.from(grid.children);
-  // Prepare to identify content blocks
-  let leftContent = null;
-  let rightBlocks = [];
-  // The left content is typically the <div> with h2, h3, p. The others are contact list <ul> and image <img>.
-  for (const child of gridChildren) {
-    // Identify the left content
-    if (
-      child.matches('div') &&
-      (child.querySelector('h2') || child.querySelector('h3'))
-    ) {
-      leftContent = child;
-    } else {
-      rightBlocks.push(child);
-    }
+  // Find the grid that contains the columns
+  const grid = element.querySelector('.w-layout-grid');
+  let columns = [];
+  if (grid) {
+    const gridChildren = Array.from(grid.children);
+    // The content structure in the HTML:
+    // [0]: div (headings & paragraph)
+    // [1]: ul (contact list)
+    // [2]: img (image)
+    // But visually in the screenshot, the text (headings/para) is left, contact list is right, image is bottom.
+    // The Columns block, however, expects all the main content columns in the 2nd row.
+    // Here, combine intro info and contacts into two columns, and image in a third column, as in the HTML structure.
+
+    // Column 1: Heading and subheading
+    const column1 = gridChildren[0] ? [gridChildren[0]] : [];
+    // Column 2: Contact list (ul)
+    const column2 = gridChildren[1] ? [gridChildren[1]] : [];
+    // Column 3: Image
+    const column3 = gridChildren[2] ? [gridChildren[2]] : [];
+
+    columns = [column1, column2, column3];
+  } else {
+    // fallback if no grid found, use element's children as single column
+    columns = [[...element.children]];
   }
-  // The right column should include both contact list (ul) and image (img), stacked
-  const rightCol = document.createElement('div');
-  rightBlocks.forEach((block) => {
-    rightCol.appendChild(block);
-  });
-  // Compose table cells for columns block
-  const cells = [
+
+  // Flatten empty columns to empty string, otherwise reference the elements array
+  const colRow = columns.map(col => (col && col.length ? col : ''));
+  const table = WebImporter.DOMUtils.createTable([
     ['Columns (columns19)'],
-    [leftContent, rightCol]
-  ];
-  const table = WebImporter.DOMUtils.createTable(cells, document);
+    colRow
+  ], document);
   element.replaceWith(table);
 }

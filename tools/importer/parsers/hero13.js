@@ -1,25 +1,31 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Block header row
-  const headerRow = ['Hero (hero13)'];
+  // 1. Find top-level grid divs (section > div > div)
+  const topLevelDivs = Array.from(element.querySelectorAll(':scope > div > div'));
 
-  // Get all direct grid children
-  const grid = element.querySelector(':scope > .w-layout-grid');
+  // 2. First div: background image (absolute positioned cover-image)
   let bgImg = null;
-  let mainContent = null;
-
-  if (grid) {
-    const gridItems = grid.querySelectorAll(':scope > div:nth-child(2)');
-    bgImg = gridItems[0].querySelector('img');
-    mainContent = gridItems[0].querySelector('div');
+  if (topLevelDivs.length > 0) {
+    bgImg = topLevelDivs[0].querySelector('img.cover-image');
   }
 
-  // Ensure we always give something for each row (null if missing)
-  const secondRow = [bgImg || ''];
-  const thirdRow = [mainContent || ''];
+  // 3. Second div: card with content
+  let contentCell = '';
+  if (topLevelDivs.length > 1) {
+    // Find the .card-body inside this div
+    const cardBody = topLevelDivs[1].querySelector('.card-body');
+    if (cardBody) {
+      contentCell = cardBody;
+    }
+  }
 
-  // Compose the block table
-  const cells = [headerRow, secondRow, thirdRow];
-  const table = WebImporter.DOMUtils.createTable(cells, document);
-  element.replaceWith(table);
+  // 4. Prepare rows for block table
+  const rows = [];
+  rows.push(['Hero (hero13)']); // header row
+  rows.push([bgImg ? bgImg : '']);
+  rows.push([contentCell || '']);
+
+  // 5. Create and replace table
+  const block = WebImporter.DOMUtils.createTable(rows, document);
+  element.replaceWith(block);
 }

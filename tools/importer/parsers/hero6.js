@@ -1,46 +1,45 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // 1. Header row for the block (per spec, always just the block name)
+  // 1. Table header row
   const headerRow = ['Hero (hero6)'];
 
-  // 2. Background Image (optional; row 2)
-  // From HTML: <img ... class="cover-image ...">
-  let bgImgEl = null;
-  const imgCandidates = element.querySelectorAll('img');
-  for (const img of imgCandidates) {
-    if (img.classList.contains('cover-image')) {
-      bgImgEl = img;
-      break;
-    }
-  }
-  // fallback: first image if no 'cover-image' found
-  if (!bgImgEl && imgCandidates.length > 0) {
-    bgImgEl = imgCandidates[0];
-  }
-  const imageRow = [bgImgEl ? bgImgEl : ''];
+  // 2. Background image row (image is optional)
+  // Per instructions, use the image element directly if present
+  const img = element.querySelector('img');
+  const imgRow = [img ? img : ''];
 
-  // 3. Content Row: Headline, Subheading, CTAs (row 3)
-  // Find the content container with the text/buttons
-  // Look for .card, as that's where all hero text/buttons are
-  let contentContainer = element.querySelector('.card');
-  if (!contentContainer) {
-    // Edge fallback: try direct child with h1 inside
-    const maybe = Array.from(element.querySelectorAll('div')).find(div => div.querySelector('h1'));
-    if (maybe) {
-      contentContainer = maybe;
-    } else {
-      // fallback: just use the whole element (never ideal)
-      contentContainer = element;
-    }
+  // 3. Content row (headline, subheading, CTA(s))
+  let contentArr = [];
+  // Find the card that contains the content (headline, subheading, ctas)
+  const card = element.querySelector('.card');
+  if (card) {
+    // Headline (typically h1)
+    const headline = card.querySelector('h1, .h1-heading, h2, h3');
+    if (headline) contentArr.push(headline);
+    // Subheading (optional)
+    // Only include if not same as headline and not empty
+    const subheading = card.querySelector('.subheading, p');
+    if (subheading && subheading !== headline) contentArr.push(subheading);
+    // CTA buttons (optional)
+    const buttonGroup = card.querySelector('.button-group');
+    if (buttonGroup) contentArr.push(buttonGroup);
   }
-  const contentRow = [contentContainer];
+  // Fallback: if card missing, grab all direct headings, paragraphs, and buttons
+  if (!card) {
+    const possible = element.querySelectorAll('h1, h2, h3, p, a');
+    possible.forEach(el => contentArr.push(el));
+  }
+  // If no content, push an empty string to keep row count correct
+  if (contentArr.length === 0) contentArr = [''];
+  const contentRow = [contentArr];
 
-  // 4. Create table block as per requirements: 1 column, 3 rows
+  // 4. Compose the table
   const cells = [
     headerRow,
-    imageRow,
+    imgRow,
     contentRow
   ];
   const table = WebImporter.DOMUtils.createTable(cells, document);
+  // 5. Replace the original element
   element.replaceWith(table);
 }

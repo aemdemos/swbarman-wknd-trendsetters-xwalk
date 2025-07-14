@@ -1,38 +1,34 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Find the main grid containing the columns
-  let grid = element.querySelector('.w-layout-grid.grid-layout');
-  let contentRow = [];
+  // Block header row: must be a single cell (first row), even if there are multiple columns
+  const headerRow = ['Columns (columns8)'];
 
-  if (grid) {
-    // Each direct child of the grid is a column (reference original element, not clone)
-    contentRow = Array.from(grid.children);
-  } else {
-    // Fallback: treat the whole element as a single column
-    contentRow = [element];
+  // Find the .container and its .w-layout-grid for columns content
+  const container = element.querySelector('.container');
+  let columnsContent = [];
+  if (container) {
+    const grid = container.querySelector('.w-layout-grid');
+    if (grid) {
+      columnsContent = Array.from(grid.children);
+    }
   }
 
-  // Create table manually to add colspan to the header if needed
-  const table = document.createElement('table');
+  // Fallback: if columns not found, treat whole element as one column
+  if (!columnsContent.length) columnsContent = [element];
 
-  // Header row: one column, with colspan if more than 1 content column
-  const headerTr = document.createElement('tr');
-  const th = document.createElement('th');
-  th.textContent = 'Columns (columns8)';
-  if (contentRow.length > 1) {
-    th.setAttribute('colspan', String(contentRow.length));
+  // Compose table: header is a single cell, second row is array of columns
+  const rows = [
+    headerRow,
+    columnsContent
+  ];
+
+  // Create table, then set colspan on the header cell to match column count
+  const table = WebImporter.DOMUtils.createTable(rows, document);
+  // Set colspan on the header cell if needed
+  const headerTh = table.querySelector('tr:first-child > th');
+  if (headerTh && columnsContent.length > 1) {
+    headerTh.setAttribute('colspan', columnsContent.length);
   }
-  headerTr.appendChild(th);
-  table.appendChild(headerTr);
-
-  // Content row: one <td> per column
-  const contentTr = document.createElement('tr');
-  contentRow.forEach(col => {
-    const td = document.createElement('td');
-    td.appendChild(col);
-    contentTr.appendChild(td);
-  });
-  table.appendChild(contentTr);
 
   element.replaceWith(table);
 }

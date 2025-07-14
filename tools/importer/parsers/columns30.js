@@ -1,21 +1,22 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Header row: exactly one cell, with the block name as specified
+  // Get all immediate child divs, which represent columns
+  const columns = Array.from(element.querySelectorAll(':scope > div'));
+
+  // For each column, extract the main content (use inner img if present)
+  const contentRow = columns.map((col) => {
+    const img = col.querySelector('img');
+    if (img) return img;
+    return col;
+  });
+
+  // Header row: must be a single cell array
   const headerRow = ['Columns (columns30)'];
 
-  // Second row: as many cells as there are immediate child columns
-  const columns = Array.from(element.querySelectorAll(':scope > div'));
-  const contentRow = columns.map(col => col);
-
-  // Table structure: header row (1 cell), then content row (n cells)
-  const cells = [
+  const table = WebImporter.DOMUtils.createTable([
     headerRow,
     contentRow
-  ];
+  ], document);
 
-  // Create the block table
-  const table = WebImporter.DOMUtils.createTable(cells, document);
-
-  // Replace the original element with the table
   element.replaceWith(table);
 }

@@ -1,58 +1,63 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Header row
-  const cells = [['Cards (cards38)']];
-
-  // Find the container holding the cards
-  const container = element.querySelector('.container');
-  if (!container) return;
-  const mainGrid = container.querySelector('.w-layout-grid');
-  if (!mainGrid) return;
-
-  // Find all cards in the grid, including nested grids
-  const cardElements = [];
-  // Helper to gather <a> children of a grid
-  function gatherCards(grid) {
-    Array.from(grid.children).forEach(child => {
-      if (child.tagName === 'A' && child.classList.contains('utility-link-content-block')) {
-        cardElements.push(child);
-      } else if (child.classList.contains('w-layout-grid')) {
-        gatherCards(child);
+  // Helper to extract a card's [image, content] from a card element
+  function parseCard(cardEl) {
+    // Image extraction: get the first img, include its direct wrapper if present
+    let img = cardEl.querySelector('img');
+    let imgContainer = img ? img.closest('div') : null;
+    // Compose the text content: heading, description, call-to-action
+    // Find first heading (h2/h3/h4 etc) inside the card
+    let heading = cardEl.querySelector('h1, h2, h3, h4, h5, h6');
+    // Find all paragraphs inside the card
+    let paragraphs = Array.from(cardEl.querySelectorAll('p'));
+    // Find call-to-action button or link
+    let cta = cardEl.querySelector('a.button, .button:not(a):not(button), button');
+    let frag = document.createDocumentFragment();
+    if (heading) frag.appendChild(heading);
+    paragraphs.forEach(p => frag.appendChild(p));
+    if (cta) {
+      // For non-a elements, wrap in <a> if parent <a> exists
+      let asLink = cta.tagName.toLowerCase() === 'a';
+      if (asLink) {
+        frag.appendChild(cta);
+      } else {
+        // Try to get parent anchor's href, else '#'
+        let parentA = cardEl.closest('a');
+        let href = parentA && parentA.href ? parentA.href : (cardEl.href ? cardEl.href : '#');
+        let a = document.createElement('a');
+        a.textContent = cta.textContent;
+        a.href = href;
+        frag.appendChild(a);
       }
-    });
-  }
-  gatherCards(mainGrid);
-
-  // For each card, extract image and text content
-  cardElements.forEach(card => {
-    // IMAGE/ICON: always in a div with utility-aspect-* class, which contains an <img>
-    let imageDiv = card.querySelector('.utility-aspect-2x3, .utility-aspect-1x1');
-    let image = imageDiv ? imageDiv.querySelector('img, svg') : null;
-
-    // TEXT: If there is a .utility-padding-all-2rem, use it. Else, use all children that are not the image/aspect wrappers.
-    let textContent = card.querySelector('.utility-padding-all-2rem');
-    if (!textContent) {
-      // Some cards (smaller ones) have text directly as h3/h4 + p
-      const div = document.createElement('div');
-      Array.from(card.children).forEach(child => {
-        if (
-          !child.classList.contains('utility-aspect-2x3') &&
-          !child.classList.contains('utility-aspect-1x1')
-        ) {
-          div.appendChild(child);
-        }
-      });
-      textContent = div;
     }
-    // If no image or no text, skip this card
-    if (!image || !textContent) return;
-    // Table row: [image, text]
-    cells.push([image, textContent]);
+    // For image cell, always prefer the containing div (for aspect-ratio wrappers)
+    let imageCell = imgContainer || img;
+    return [imageCell, frag];
+  }
+
+  // Find the outer grid containing the cards
+  let outerGrid = element.querySelector('.w-layout-grid.grid-layout');
+  if (!outerGrid) return;
+
+  // The top-level grid may have direct cards and/or nested grids with more cards
+  const cardElements = [];
+  Array.from(outerGrid.children).forEach(child => {
+    if (child.classList.contains('utility-link-content-block')) {
+      cardElements.push(child);
+    } else if (child.classList.contains('w-layout-grid')) {
+      // Nested grid: extract all card links
+      Array.from(child.querySelectorAll('a.utility-link-content-block')).forEach(card => cardElements.push(card));
+    }
   });
 
-  // Only create the block if there are cards
-  if (cells.length > 1) {
-    const table = WebImporter.DOMUtils.createTable(cells, document);
-    element.replaceWith(table);
-  }
+  // Build table rows
+  const rows = [];
+  rows.push(['Cards (cards38)']);
+  cardElements.forEach(card => {
+    rows.push(parseCard(card));
+  });
+
+  // Create and replace
+  const table = WebImporter.DOMUtils.createTable(rows, document);
+  element.replaceWith(table);
 }

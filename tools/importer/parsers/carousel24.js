@@ -1,40 +1,35 @@
 /* global WebImporter */
 export default function parse(element, { document }) {
-  // Table header as specified in the block description
+  // Header row for the Carousel block
   const headerRow = ['Carousel (carousel24)'];
 
-  // Find the card-body that contains the content for the slide
-  const cardBody = element.querySelector('.card-body');
-
-  // Defensive: if cardBody isn't found, exit early (nothing to extract)
+  // Get the deepest .card-body (structure may vary)
+  let cardBody = element.querySelector('.card-body');
   if (!cardBody) {
-    // Remove element to avoid import issues, but don't add a block
-    element.remove();
-    return;
+    // fallback: just use the main element
+    cardBody = element;
   }
 
-  // Find the image: must reference the existing <img> element
+  // Find the mandatory image inside cardBody
   const img = cardBody.querySelector('img');
 
-  // Find the heading (optional)
-  const heading = cardBody.querySelector('.h4-heading');
+  // Find heading or title-like element
+  // Accept common heading classes or tags, fallback to empty if not found
+  let heading = null;
+  // Try to find by class
+  heading = cardBody.querySelector('.h4-heading, .heading, h1, h2, h3, h4, h5, h6');
 
-  // Prepare the text cell: only include if there's content
-  let textCell = '';
-  if (heading && heading.textContent.trim()) {
-    // Use the actual existing heading element, not a new one
-    textCell = heading;
-  }
+  // Prepare the slide row (image in first cell, text in second cell if present)
+  const slideRow = [img,
+    heading ? heading : ''
+  ];
 
-  // Prepare the slide row (always two columns: image, textCell)
-  const row = [img, textCell];
-
-  // Compose the block table
+  // Create the block table
   const table = WebImporter.DOMUtils.createTable([
     headerRow,
-    row
+    slideRow
   ], document);
 
-  // Replace the original element with the new table block
+  // Replace original element with the new table
   element.replaceWith(table);
 }
