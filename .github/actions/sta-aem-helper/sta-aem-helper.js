@@ -79,11 +79,13 @@ async function fetchJWTAuthAccessToken(config) {
     aud: `${ims}/c/${clientId}`,
   };
 
-  for (let i = 0; i < metaScopes.length; i += 1) {
-    if (validatedMetaScopes[i].includes('https')) {
-      jwtPayload[metaScopes[i]] = true;
-    } else {
-      jwtPayload[`${ims}/s/${validatedMetaScopes[i]}`] = true;
+  if (validatedMetaScopes && validatedMetaScopes.length > 0) {
+    for (let i = 0; i < metaScopes.length; i += 1) {
+      if (validatedMetaScopes[i].includes('https')) {
+        jwtPayload[metaScopes[i]] = true;
+      } else {
+        jwtPayload[`${ims}/s/${validatedMetaScopes[i]}`] = true;
+      }
     }
   }
   let token;
