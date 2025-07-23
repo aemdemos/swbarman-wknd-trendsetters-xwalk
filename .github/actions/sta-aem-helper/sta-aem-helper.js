@@ -159,11 +159,7 @@ async function fetchAccessToken(credentialsPath) {
   };
 
   const tokenResponse = await fetchJWTAuthAccessToken(config);
-  if (tokenResponse?.access_token) {
-    return tokenResponse.access_token;
-  } else {
-    throw new Error('Failed to fetch access token from Adobe IMS');
-  }
+  return tokenResponse?.access_token;
 }
 
 /**
