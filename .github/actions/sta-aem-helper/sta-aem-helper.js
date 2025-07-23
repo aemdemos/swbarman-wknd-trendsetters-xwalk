@@ -12,7 +12,10 @@
 
 import core from '@actions/core';
 import fs from 'fs';
+// eslint-disable-next-line import/no-extraneous-dependencies
 import jwt from 'jsonwebtoken';
+import { OPERATIONS } from './sta-aem-helper-constants.js';
+import { doPreviewPublish } from './aem-preview-publish.js';
 
 /**
  * Fetches an Adobe IMS access token using JWT authentication.
@@ -69,7 +72,7 @@ async function fetchJWTAuthAccessToken(config) {
 
   let validatedMetaScopes = metaScopes;
   if (!Array.isArray(validatedMetaScopes)) {
-    validatedMetaScopes = metaScopes.split(',');
+    validatedMetaScopes = validatedMetaScopes.split(',');
   }
 
   const jwtPayload = {
@@ -79,13 +82,11 @@ async function fetchJWTAuthAccessToken(config) {
     aud: `${ims}/c/${clientId}`,
   };
 
-  if (validatedMetaScopes && validatedMetaScopes.length > 0) {
-    for (let i = 0; i < validatedMetaScopes.length; i += 1) {
-      if (validatedMetaScopes[i].includes('https')) {
-        jwtPayload[validatedMetaScopes[i]] = true;
-      } else {
-        jwtPayload[`${ims}/s/${validatedMetaScopes[i]}`] = true;
-      }
+  for (let i = 0; i < validatedMetaScopes.length; i += 1) {
+    if (validatedMetaScopes[i].includes('https')) {
+      jwtPayload[validatedMetaScopes[i]] = true;
+    } else {
+      jwtPayload[`${ims}/s/${validatedMetaScopes[i]}`] = true;
     }
   }
   let token;
@@ -163,22 +164,57 @@ async function fetchAccessToken(credentialsPath) {
 }
 
 /**
- * Main function for the GitHub Action
- * @returns {Promise<void>}
+ * Performs the fetch access token operation.
+ *
+ * @param {string} credentialsPath - The path to the JSON credentials file.
+ * @returns {Promise<void>} - Resolves when the operation is complete.
+ * @throws {Error} - If the operation fails.
  */
+async function doFetchAccessToken(credentialsPath) {
+  const accessToken = await fetchAccessToken(credentialsPath);
+  if (accessToken) {
+    core.setOutput('access_token', accessToken);
+    core.info(`Access token fetched successfully: ${accessToken?.substring(0, 10)}...`);
+  } else {
+    throw new Error('Failed to fetch access token');
+  }
+}
+
+/**
+* Main function for the GitHub Action.
+*
+* Depending on the provided operation, different outputs are set:
+* All operations can set the error_message output.
+*
+* |---------------------------------------------------------------------|
+* | operation          | output                                         |
+* |---------------------------------------------------------------------|
+* | fetch-access-token | access_token                                   |
+* |---------------------------------------------------------------------|
+* | preview            | successes - number of successful operations    |
+* |                    | failures - number of failures                  |
+* |---------------------------------------------------------------------|
+* | previewAndPublish  | successes - number of successful operations    |
+* |                    | failures - number of failures                  |
+* |---------------------------------------------------------------------|
+* |  *                 | error_message - string describing the error    |
+* |---------------------------------------------------------------------|
+*
+* If the operation is unknown, an error is thrown.
+* @returns {Promise<void>}
+*/
 async function run() {
   try {
-    const credentialsPath = core.getInput('credentials_path');
     const operation = core.getInput('operation');
 
-    if (operation === 'fetch-access-token') {
-      const accessToken = await fetchAccessToken(credentialsPath);
-      if (accessToken) {
-        core.setOutput('access_token', accessToken);
-        core.info(`Access token fetched successfully: ${accessToken?.substring(0, 10)}...`);
-      } else {
-        throw new Error('Failed to fetch access token');
-      }
+    if (operation === OPERATIONS.FETCH_ACCESS_TOKEN) {
+      const credentialsPath = core.getInput('credentials_path');
+      doFetchAccessToken(credentialsPath);
+    } else if (operation === OPERATIONS.PREVIEW_PAGES
+      || operation === OPERATIONS.PREVIEW_AND_PUBLISH) {
+      const urls = core.getInput('urls');
+      const context = core.getInput('context');
+      await doPreviewPublish(urls, operation, context);
     } else {
       throw new Error(`Unknown AEM helper operation: ${operation}`);
     }
