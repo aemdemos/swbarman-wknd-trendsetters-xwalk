@@ -158,7 +158,12 @@ async function fetchAccessToken(credentialsPath) {
     ims: `https://${integration.imsEndpoint}`,
   };
 
-  return fetchJWTAuthAccessToken(config);
+  const tokenResponse = await fetchJWTAuthAccessToken(config);
+  if (tokenResponse?.access_token) {
+    return tokenResponse.access_token;
+  } else {
+    throw new Error('Failed to fetch access token from Adobe IMS');
+  }
 }
 
 /**
