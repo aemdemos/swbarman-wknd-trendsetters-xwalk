@@ -79,7 +79,7 @@ jobs:
           npm install
           cd ../sta-import-zip
           npm install
-          cd ../sta-xwalk-upload
+          cd ../sta-xwalk-operations
           npm install
           cd ../sta-aem-publish
           npm install
