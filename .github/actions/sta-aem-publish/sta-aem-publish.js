@@ -120,6 +120,7 @@ async function replicateToPublish(accessToken, aemUrl, contentPaths) {
 
     return { success: true, response: result };
   } catch (error) {
+    core.setOutput('error_message', `Replication to publish failed: ${error.message}`);
     core.warning(`❌ Replication to publish failed: ${error.message}`);
     throw error;
   }
