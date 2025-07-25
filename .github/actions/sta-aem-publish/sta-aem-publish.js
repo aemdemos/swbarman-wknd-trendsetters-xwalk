@@ -150,7 +150,7 @@ async function replicateContent(accessToken, aemUrl, contentPaths, isPreview = f
 export async function run() {
   try {
     const accessToken = core.getInput('access_token');
-    const aemUrl = core.getInput('aem_url');
+    let aemUrl = core.getInput('aem_url');
     const contentPathsInput = core.getInput('content_paths');
     const isPreview = core.getInput('is_preview') === 'true';
 
@@ -166,6 +166,8 @@ export async function run() {
     }
 
     const paths = JSON.parse(contentPathsInput);
+    aemUrl = new URL(aemUrl).origin;
+    core.info(`🔗 AEM URL: ${aemUrl}`);
 
     if (paths.length === 0) {
       throw new Error('No valid content paths provided');
