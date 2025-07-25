@@ -27,4 +27,4 @@ outputs:
 
 runs:
   using: 'node20'
-  main: ''
+  main: 'sta-xwalk-operations.js'
