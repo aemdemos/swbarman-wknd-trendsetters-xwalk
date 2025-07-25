@@ -66,7 +66,7 @@ async function replicateToPreview(accessToken, aemUrl, contentPaths) {
 
     return result;
   } catch (error) {
-    core.error(`❌ Replication to preview failed: ${error.message}`);
+    core.warning(`❌ Replication to preview failed: ${error.message}`);
     throw error;
   }
 }
@@ -120,8 +120,7 @@ async function replicateToPublish(accessToken, aemUrl, contentPaths) {
 
     return { success: true, response: result };
   } catch (error) {
-    core.error(`❌ Replication to publish failed: ${error.message}`);
-    core.setOutput('error_message', `Replication to publish failed: ${error.message}`);
+    core.warning(`❌ Replication to publish failed: ${error.message}`);
     throw error;
   }
 }
